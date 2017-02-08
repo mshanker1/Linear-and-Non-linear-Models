@@ -1,0 +1,98 @@
+---
+title: "Logistic Regression"
+output: html_notebook
+---
+
+Enter the sample problem data
+```{r}
+testdata <- data.frame(admit=c(1,1,0,0),gender=c(1,0,1,0),freq=c(7,3,3,7))
+testdata
+```
+```{r}
+testdata$gender = factor(testdata$gender)
+fittest <- glm(admit ~ gender,family=binomial,weights = freq,data=testdata)
+summary(fittest)
+exp(coef(fittest))
+```
+
+Reference: http://www.ats.ucla.edu/stat/r/dae/logit.htm
+Load the following packages
+```{r}
+library(aod)
+library(ggplot2)
+library(Rcpp)
+```
+
+Download the data
+```{r}
+mydata <- read.csv("http://www.ats.ucla.edu/stat/data/binary.csv")
+## view the first few rows of the data
+summary(mydata)
+sapply(mydata,sd) #get the sd
+```
+
+```{r}
+xtabs(~admit+rank,mydata) 
+```
+
+Now, we run logistic regression on this model. Convert rank to a factor, so we can use it 
+as a categorical variable
+
+```{r}
+mydata$rank = factor(mydata$rank)
+fit <- glm(admit ~ gre+gpa+rank,data=mydata,family=binomial)
+summary(fit)
+
+```
+
+Calculate confidence intervals for fit
+```{r}
+confint(fit)
+confint.default(fit)
+```
+
+Test for rank using the Wald test
+```{r}
+wald.test(b = coef(fit), Sigma = vcov(fit), Terms = 4:6)
+```
+
+Below we test that the coefficient for rank=2 is equal to the coefficient for rank=3. The first line of code below creates a vector l that defines the test we want to perform. In this case, we want to test the difference (subtraction) of the terms for rank=2 and rank=3 (i.e., the 4th and 5th terms in the model). To contrast these two terms, we multiply one of them by 1, and the other by -1. The other terms in the model are not involved in the test, so they are multiplied by 0. The second line of code below uses L=l to tell R that we wish to base the test on the vector l (rather than using the Terms option as we did above).
+Ref: Introduction to SAS.  UCLA: Statistical Consulting Group. 
+from http://www.ats.ucla.edu/stat/sas/notes2/ (accessed November 24, 2007).
+
+
+
+```{r}
+l <- cbind(0,0,0,1,-1,0)
+wald.test(b = coef(fit), Sigma = vcov(mylogit), L = l)
+```
+
+Now, get the odds ratio
+```{r}
+exp(coef(fit))
+```
+
+odds ratios and 95% CI
+```{r}
+exp(cbind(OR = coef(fit), confint(fit)))
+```
+
+Now we can say that for a one unit increase in gpa, the odds of being admitted to graduate school (versus not being admitted) increase by a factor of 2.23. 
+
+You can also use predicted probabilities to help you understand the model. Predicted probabilities can be computed for both categorical and continuous predictor variables. In order to create predicted probabilities we first need to create a new data frame with the values we want the independent variables to take on to create our predictions.
+
+We will start by calculating the predicted probability of admission at each value of rank, holding gre and gpa at their means. First we create and view the data frame.
+
+
+```{r}
+newdata1 <- with(mydata,
+  data.frame(gre = mean(gre), gpa = mean(gpa), rank = factor(1:4)))
+newdata1
+```
+
+Now predict the probabilities
+```{r}
+  newdata1$rankP <- predict(fit, newdata = newdata1, type = "response")
+newdata1
+```
+

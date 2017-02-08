@@ -25,7 +25,6 @@ plot(Accts,Sales,
      )
 abline(fit) # plot the regression line on the current plot; make sure your x and y are conistent
 plot(fit) # regression plots
-abline(fit) # supposed to plot the regression line on the current plot
 fit$coefficients # print out the coefficients, alternatively
 coef(fit)
 confint(fit,level=0.90) # print out a 90% CI for the fit
@@ -115,10 +114,10 @@ leaps<-regsubsets(Sales ~ Time+MktPoten+MktShare+Adver+Change+Accts+WkLoad,data=
 summary(leaps)
 # plot a table of models showing variables in each model.
 # models are ordered by the selection statistic.
-plot(leaps,scale="r2")
+plot(leaps,scale="bic")
 # plot statistic by subset size 
 library(car)
-subsets(leaps, statistic="rsq")
+subsets(leaps, statistic="bic")
 
 #Other options for plot( ) are bic, Cp, and adjr2. Other options for plotting with 
 # subset( ) are bic, cp, adjr2, and rss.

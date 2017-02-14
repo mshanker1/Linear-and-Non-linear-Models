@@ -1,0 +1,55 @@
+---
+title: "Non-linear Models"
+output: html_notebook
+---
+
+This notebook illustrates the following techniques:
+Principal component analysis
+Cluster Analysis
+Decision / Classification trees
+```{r}
+toypc <- read.csv("Toy Princomp.dat")
+summary(toypc)
+```
+```{r}
+cor(toypc)
+```
+
+```{r}
+fit <- princomp(toypc[,-3],cor=T)
+summary(fit)
+```
+```{r}
+loadings(fit) # pc loadings
+plot(fit,type="lines") # scree plot
+fit$scores # the principal components
+biplot(fit)
+```
+Now, run a regression of Y on x,z, and Y on Comp.1, Comp.2
+```{r}
+fit1 <- lm(y~x+z,data=toypc)
+fit2 <- lm(toypc$y~fit$scores)
+summary(fit1)
+summary(fit2)
+```
+
+Now, open up the Olymp88sas.dat dataset
+```{r}
+olymp <- read.csv("Olymp88sas.dat")
+summary(olymp)
+```
+Let's use the "psych" package to run PCA here.
+```{r}
+library("psych")
+fa.parallel(toypc[,-3],fa="pc")
+```
+
+We could also use the principal function to do this
+```{r}
+fit3 <- principal(toypc[,-3],nfactors = 2,scores=T)
+fit3
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).

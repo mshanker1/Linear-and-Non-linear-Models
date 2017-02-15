@@ -18,6 +18,7 @@ cor(toypc)
 ```{r}
 fit <- princomp(toypc[,-3],cor=T)
 summary(fit)
+fit$loadings
 ```
 ```{r}
 loadings(fit) # pc loadings
@@ -41,15 +42,164 @@ summary(olymp)
 Let's use the "psych" package to run PCA here.
 ```{r}
 library("psych")
-fa.parallel(toypc[,-3],fa="pc")
+fa.parallel(olymp[,-11],fa="pc")
 ```
 
 We could also use the principal function to do this
 ```{r}
-fit3 <- principal(toypc[,-3],nfactors = 2,scores=T)
+fit3 <- principal(olymp[,-11],nfactors = 2,scores=T)
 fit3
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+Now, let us run cluster analysis. Install the following packages: “cluster, NbClust, flexclust, fMultivar, ggplot2, and rattle packages”
+```{r}
+forcluster <- c("cluster","NbClust","flexclust","fMultivar","rattle")
+install.packages(forcluster)
+```
 
+Import the Public Utilities Dataset
+
+```{r}
+putil <- read.csv("Public Utilities.dat")
+summary(putil)
+```
+
+When using clustering, it is always good to standardize the variables, so you are dealing
+with variables in the same scale.
+```{r}
+row.names(putil) <- putil$Company # use Company for row names
+putils <- scale(putil[,-9]) # only use numeric columns
+summary(putils)
+```
+
+Now run the cluster analysis by
+1. Calculating distance
+2. Using Wards distance to form clusters
+```{r}
+d <- dist(putils)
+fit.w <- hclust(d,method="ward.D")
+plot(fit.w,hang=-1,cex=0.8,main="Ward linking clusters")
+```
+Now, let us examine the results for different cluster sizes
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+```{r}
+clusters <- cutree(fit.w,k=4)
+table(clusters)
+```
+```{r}
+aggregate(putil,by=list(cluster=clusters),mean) #original form
+aggregate(putils,by=list(cluster=clusters),mean) #scaled form
+```
+Now plot the results
+```{r}
+plot(fit.w,hang=-1,cex=0.8,main="Ward linking clusters")
+rect.hclust(fit.w,k=3)
+```
+
+Let us now perform k-means clustering. Note that you have
+to specify the number of clusters
+```{r}
+library(NbClust)
+set.seed(1234)
+devAskNewPage(ask=T)
+nc <- NbClust(putils,min.nc=2,max.nc=5,method="kmeans")
+table(nc$Best.n[1,])
+```
+```{r}
+barplot(table(nc$Best.n[1,]),
+        xlab="Number of Clusters", ylab="Number of criteria",
+        main = "Number of clusters chosen by 8 Criteria")
+```
+
+We will now use 4 clusters
+```{r}
+set.seed(1234)
+fit.km <- kmeans(putils,4,nstart=25)
+fit.km$size
+```
+```{r}
+fit.km$centers
+aggregate(putil[-9],by=list(cluster=clusters),mean) #scaled form
+```
+
+Now, we demonstrate decision and classification trees. First, install the requisite packages
+```{r}
+pkgs <- c("rpart", "rpart.plot", "party")
+install.packages(pkgs)
+```
+Import the MassHousing Dataset
+```{r}
+mh <- read.csv("Mass Housing.dat")
+head(mh)
+```
+
+The objective is to predict the market value
+```{r}
+set.seed(1234)
+train <- sample(nrow(mh), 0.7*nrow(mh)) # create a training set
+mh.train <- mh[train,]
+mh.validate <- mh[-train,]
+dim(mh.train)
+dim(mh.validate)
+```
+ Now fit the tree
+
+```{r}
+library(rpart)
+set.seed(1234)
+dtree <- rpart(mvalue~.,data=mh.train,method="anova",
+  parms=list(split="information"))
+dtree$cptable
+```
+```{r}
+plotcp(dtree)
+pv <- dtree$cptable[which.min(dtree$cptable[,"xerror"]),"CP"] # This automatically selects the smallest cross-validated error
+dtree.p <- prune(dtree,cp=pv)
+dtree.p
+plotcp(dtree.p)
+dtree.p$cptable
+```
+
+Plot your tree
+```{r}
+library(rpart.plot)
+prp(dtree.p,type=2,extra=100,
+    fallen.leaves = T,main="Decison Tree")
+```
+Now see how well the tree does on the validation set
+```{r}
+dtree.pred <- predict(dtree.p,mh.validate)
+summary(dtree.p)
+summary(dtree.pred)
+```
+
+We now do classification trees. Read the Freshmen1.dat file
+```{r}
+fm <- read.csv("Freshmen1.dat")
+fm$return <- factor(fm$return, levels=c(0,1),
+                    labels=c("Does not return","Returns"))
+head(fm)
+```
+
+Create a training and validation set
+```{r}
+set.seed(1234)
+train <- sample(nrow(fm), 0.7*nrow(fm)) # create a training set
+fm.train <- fm[train,]
+fm.validate <- fm[-train,]
+table(fm.train$return)
+table(fm.validate$return)
+```
+Run the classification tree. Note the method is now "class"
+```{r}
+library(rpart)
+set.seed(1234)
+attach(fm.train)
+ctree <- rpart(return~GPA+Miles.from.Home+College+Accommodations+Part.Time.Work.Hours+Attends.Office.Hours+High.School.GPA,data=fm.train,method="class",
+  parms=list(split="information"))
+summary(ctree)
+ctree$cptable
+plotcp(ctree)
+prp(ctree,type=2,extra=104,
+    fallen.leaves = T,main="Classification Tree")
+```

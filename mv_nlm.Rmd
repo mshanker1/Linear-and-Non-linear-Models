@@ -19,6 +19,7 @@ cor(toypc)
 fit <- princomp(toypc[,-3],cor=T)
 summary(fit)
 fit$loadings
+1.255074^2 + 0.6517592^2
 ```
 ```{r}
 loadings(fit) # pc loadings
@@ -30,8 +31,10 @@ Now, run a regression of Y on x,z, and Y on Comp.1, Comp.2
 ```{r}
 fit1 <- lm(y~x+z,data=toypc)
 fit2 <- lm(toypc$y~fit$scores)
+fit3 <- lm(toypc$y~fit$scores[,1])
 summary(fit1)
 summary(fit2)
+summary(fit3)
 ```
 
 Now, open up the Olymp88sas.dat dataset
@@ -45,9 +48,11 @@ library("psych")
 fa.parallel(olymp[,-11],fa="pc")
 ```
 
-We could also use the principal function to do this
+We could also use the principal function to do this.
+
+Note: How do you plot the loadings?
 ```{r}
-fit3 <- principal(olymp[,-11],nfactors = 2,scores=T)
+fit3 <- principal(olymp[,-11],nfactors = 4,scores=T)
 fit3
 ```
 
@@ -77,6 +82,7 @@ Now run the cluster analysis by
 2. Using Wards distance to form clusters
 ```{r}
 d <- dist(putils)
+summary(d)
 fit.w <- hclust(d,method="ward.D")
 plot(fit.w,hang=-1,cex=0.8,main="Ward linking clusters")
 ```
@@ -93,7 +99,7 @@ aggregate(putils,by=list(cluster=clusters),mean) #scaled form
 Now plot the results
 ```{r}
 plot(fit.w,hang=-1,cex=0.8,main="Ward linking clusters")
-rect.hclust(fit.w,k=3)
+rect.hclust(fit.w,k=4)
 ```
 
 Let us now perform k-means clustering. Note that you have
@@ -119,7 +125,7 @@ fit.km$size
 ```
 ```{r}
 fit.km$centers
-aggregate(putil[-9],by=list(cluster=clusters),mean) #scaled form
+aggregate(putil[-9],by=list(cluster=clusters),mean) #unscaled form
 ```
 
 Now, we demonstrate decision and classification trees. First, install the requisite packages
@@ -169,8 +175,8 @@ prp(dtree.p,type=2,extra=100,
 Now see how well the tree does on the validation set
 ```{r}
 dtree.pred <- predict(dtree.p,mh.validate)
-summary(dtree.p)
 summary(dtree.pred)
+dtree.pred
 ```
 
 We now do classification trees. Read the Freshmen1.dat file
@@ -195,7 +201,7 @@ Run the classification tree. Note the method is now "class"
 library(rpart)
 set.seed(1234)
 attach(fm.train)
-ctree <- rpart(return~GPA+Miles.from.Home+College+Accommodations+Part.Time.Work.Hours+Attends.Office.Hours+High.School.GPA,data=fm.train,method="class",
+ctree <- rpart(return~.,data=fm.train,method="class",
   parms=list(split="information"))
 summary(ctree)
 ctree$cptable

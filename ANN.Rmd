@@ -1,0 +1,76 @@
+---
+title: "Neural Networks"
+output: html_notebook
+---
+
+This illustrates neural networks. 
+Ref: https://www.r-bloggers.com/fitting-a-neural-network-in-r-neuralnet-package/
+Read the file and check for NAs.
+
+```{r}
+kuiper <- read.csv("Kuiper.dat")
+summary(kuiper)
+apply(kuiper,2,function(x) sum(is.na(x)))
+```
+
+Now, check the data for outliers
+```{r}
+plot(kuiper$Price,kuiper$Mileage) # note the outliers
+```
+
+Now, exlude the outliers, and select columns for ANN
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+```{r}
+ks1 <- select(kuiper,Price,Mileage,Liter:Leather)
+ks2 <- filter(ks1,Price < 52000)
+summary(ks2)
+```
+
+Let us now divide the set into two. Really, we should divide it into three parts, but for now, we will use a Training and Test set.
+
+```{r}
+index <- sample(1:nrow(ks2),round(0.8*nrow(ks2)))
+train <- ks2[index,]
+test <- ks2[-index,]
+summary(train)
+summary(test)
+```
+
+Data standardization is an important part of ANN. In this example, we will do it as for the most part the data is well constructed.
+
+Let us now run a simple regression model. The results will serve as a base case to test against ANN.
+```{r}
+lm.fit <- lm(Price~.,data=train)
+summary(lm.fit)
+pr.lm <- predict(lm.fit,test)
+summary(pr.lm)
+anova(pr.lm)
+mse.lm <- sum((pr.lm-test$Price)^2/nrow(test))
+mse.lm
+```
+
+Let us now call the neural network on the training set
+```{r}
+nn <- nnet(Price~.,data=train,size=3)
+plot(nn)
+```
+
+Now, install the NeuralNetTools packages to plot the network
+```{r}
+#library(NeuralNetTools)
+plotnet(nn,pos.col='darkgreen',neg.col='darkblue',alpha.val=0.7,rel.rsc=15,
+circle.cex=10,cex=1.4,
+    circle.col='brown')
+plotnet(nn,wts.only=T)
+```
+To determine relative importance of input variables
+```{r}
+garson(nn)
+```
+
+We could also use the neuralnet package
+```{r}
+library(neuralnet)
+nn2 <- neuralnet(Price~Mileage+Liter+Doors+Cruise+Sound+Leather,data=train,hidden=5,rep=1)
+plotnet(nn2)
+```

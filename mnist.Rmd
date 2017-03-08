@@ -25,6 +25,8 @@ h2o.no_progress()  # Disable progress bars for Rmd
 
 ```{r message=FALSE}
 mnist <- read.csv("./train.csv")
+mnist_ts <- read.csv("./test.csv")
+test <- as.h2o(mnist_ts)
 mnist$label <- factor(mnist$label)
 mnisth2o <- as.h2o(mnist) # convert to h2o dataframe
 
@@ -55,7 +57,7 @@ dl_fit1 <- h2o.deeplearning(x = x,
                             seed = 1)
 ```
 
-Let's compare performance on the validation set now
+
 ```{r}
 dl_perf1 <- h2o.performance(model = dl_fit1)
 h2o.mse(dl_perf1)
@@ -65,6 +67,34 @@ plot(dl_fit1,
      metric = "classification_error")
 ```
 
+Use validation with early stopping
+```{r}
+dl_fit2 <- h2o.deeplearning(x = x,
+                            y = y,
+                            training_frame = train,
+                            validation_frame = valid,
+                            model_id = "dl_fit2",
+                            hidden = c(20,20),
+                            epochs=20,
+                            activation = "Rectifier",
+                            seed = 1)
+
+```
+Now output fit2 results
+```{r}
+dl_perf2 <- h2o.performance(model = dl_fit2)
+h2o.mse(dl_perf2,valid=T)
+h2o.confusionMatrix(dl_fit2, valid=T)
+plot(dl_fit2, 
+     timestep = "epochs", 
+     metric = "classification_error")
+```
+
+Now, do the prediction on the test set
+```{r}
+h2o.predict(dl_fit2,newdata = test)
+```
+
 Now we use grid search with the validation set to select the model
 ```{r}
 activation_opt <- c("Rectifier", "Maxout", "Tanh")
@@ -72,7 +102,7 @@ l1_opt <- c(0, 0.00001, 0.0001, 0.001, 0.01)
 l2_opt <- c(0, 0.00001, 0.0001, 0.001, 0.01)
 
 hyper_params <- list(activation = activation_opt, l1 = l1_opt, l2 = l2_opt)
-search_criteria <- list(strategy = "RandomDiscrete", max_runtime_secs = 600)
+search_criteria <- list(strategy = "RandomDiscrete", max_runtime_secs=60, max_models=20)
 ```
 
 Now run the DL algorithm
@@ -90,10 +120,25 @@ dl_grid <- h2o.grid("deeplearning", x = x, y = y,
 Now, output the performance
 ```{r}
 dl_gridperf <- h2o.getGrid(grid_id = "dl_grid", 
-                           sort_by = "accuracy", 
+                           sort_by = "accuracy",
                            decreasing = TRUE)
 print(dl_gridperf)
+
 ```
+Now get best model and test it
+```{r}
+best_dl_model_id <- dl_gridperf@model_ids[[1]]
+best_dl <- h2o.getModel(best_dl_model_id)
+
+```
+
+```{r}
+best_dl_perf <- h2o.predict(model = best_dl, newdata = test)
+h2o.mse(best_dl_perf)
+```
+
+best_dl_perf <- h2o.performance(model = best_dl, newdata = test)
+h2o.mse(best_dl_perf)
 
 More detailed performance 
 ```{r}

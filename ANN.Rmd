@@ -32,8 +32,8 @@ Let us now divide the set into two. Really, we should divide it into three parts
 index <- sample(1:nrow(ks2),round(0.8*nrow(ks2)))
 train <- ks2[index,]
 test <- ks2[-index,]
-summary(train)
-summary(test)
+nrow(train)
+nrow(test)
 ```
 
 Data standardization is an important part of ANN. In this example, we will do it as for the most part the data is well constructed.
@@ -42,9 +42,9 @@ Let us now run a simple regression model. The results will serve as a base case 
 ```{r}
 lm.fit <- lm(Price~.,data=train)
 summary(lm.fit)
+anova(lm.fit)
 pr.lm <- predict(lm.fit,test)
 summary(pr.lm)
-anova(pr.lm)
 mse.lm <- sum((pr.lm-test$Price)^2/nrow(test))
 mse.lm
 ```
@@ -52,7 +52,6 @@ mse.lm
 Let us now call the neural network on the training set
 ```{r}
 nn <- nnet(Price~.,data=train,size=3)
-plot(nn)
 ```
 
 Now, install the NeuralNetTools packages to plot the network

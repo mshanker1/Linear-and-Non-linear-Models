@@ -1,0 +1,77 @@
+---
+title: "Digit Recognizer - Forked"
+author: "Frank C"
+output: html_document
+---
+Reference: http://htmlpreview.github.io/?https://github.com/ledell/sldm4-h2o/blob/master/sldm4-deeplearning-h2o.html
+
+```{r}
+library(h2o)
+h2o.init(nthreads = -1, #Number of threads -1 means use all cores on your machine
+         max_mem_size = "8G")  #max mem size is the maximum memory to allocate to H2O
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+h2o.no_progress()  # Disable progress bars for Rmd
+```
+
+## Load and Check the Data
+
+
+```{r message=FALSE}
+mnist <- read.csv("./train.csv")
+mnist$label <- factor(mnist$label)
+mnisth2o <- as.h2o(mnist) # convert to h2o dataframe
+
+# split data into training and validation
+splits <- h2o.splitFrame(data = mnisth2o, 
+                         ratios = c(0.8),  #partition data into 80% and 20%
+                         seed =1)  #setting a seed will guarantee reproducibility
+train <- splits[[1]]
+valid <- splits[[2]]
+
+dim(train)
+dim(valid)
+```
+
+```{r}
+y <- "label"
+x <- setdiff(names(train),y)
+```
+
+Now, we use the DL algorithm with most default options, except for hidden.
+```{r}
+dl_fit1 <- h2o.deeplearning(x = x,
+                            y = y,
+                            training_frame = train,
+                            model_id = "dl_fit1",
+                            hidden = c(20,20),
+                            seed = 1)
+```
+
+Let's compare performance on the validation set now
+```{r}
+dl_perf1 <- h2o.performance(model = dl_fit1, newdata = valid)
+h2o.mse(dl_perf1)
+h2o.confusionMatrix(dl_fit1)
+plot(dl_fit1, 
+     timestep = "epochs", 
+     metric = "classification_error")
+```
+
+More detailed performance 
+```{r}
+# Get the CV models from the `dl_fit1` object
+cv_models <- sapply(dl_fit1@model$cross_validation_models, 
+                    function(i) h2o.getModel(i$name))
+
+# Plot the scoring history over time
+plot(cv_models[[1]], 
+     timestep = "epochs", 
+     metric = "classification_error")
+```

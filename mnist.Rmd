@@ -49,6 +49,7 @@ Now, we use the DL algorithm with most default options, except for hidden.
 dl_fit1 <- h2o.deeplearning(x = x,
                             y = y,
                             training_frame = train,
+                            validation_frame = valid,
                             model_id = "dl_fit1",
                             hidden = c(20,20),
                             seed = 1)
@@ -56,12 +57,42 @@ dl_fit1 <- h2o.deeplearning(x = x,
 
 Let's compare performance on the validation set now
 ```{r}
-dl_perf1 <- h2o.performance(model = dl_fit1, newdata = valid)
+dl_perf1 <- h2o.performance(model = dl_fit1)
 h2o.mse(dl_perf1)
 h2o.confusionMatrix(dl_fit1)
 plot(dl_fit1, 
      timestep = "epochs", 
      metric = "classification_error")
+```
+
+Now we use grid search with the validation set to select the model
+```{r}
+activation_opt <- c("Rectifier", "Maxout", "Tanh")
+l1_opt <- c(0, 0.00001, 0.0001, 0.001, 0.01)
+l2_opt <- c(0, 0.00001, 0.0001, 0.001, 0.01)
+
+hyper_params <- list(activation = activation_opt, l1 = l1_opt, l2 = l2_opt)
+search_criteria <- list(strategy = "RandomDiscrete", max_runtime_secs = 600)
+```
+
+Now run the DL algorithm
+```{r}
+dl_grid <- h2o.grid("deeplearning", x = x, y = y,
+                    grid_id = "dl_grid",
+                    training_frame = train,
+                    validation_frame = valid,
+                    seed = 1,
+                    hidden = c(20,20),
+                    hyper_params = hyper_params,
+                    search_criteria = search_criteria)
+```
+
+Now, output the performance
+```{r}
+dl_gridperf <- h2o.getGrid(grid_id = "dl_grid", 
+                           sort_by = "accuracy", 
+                           decreasing = TRUE)
+print(dl_gridperf)
 ```
 
 More detailed performance 

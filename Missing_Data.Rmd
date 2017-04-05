@@ -1,0 +1,95 @@
+---
+title: "Missing Data"
+output: html_notebook
+---
+Here is the link to the presentation: https://docs.google.com/a/kent.edu/presentation/d/10cY3vZghJ4KVybpAO5kWw-e-3bG7PD4D--ZV6KzfUt0/edit?usp=sharing.
+
+Here is a paper that you might find interesting: https://www.jstatsoft.org/article/view/v045i03
+
+
+
+Install the requisite packages
+```{r}
+install.packages("VIM")
+install.packages("mice")
+```
+
+Read the example file "Equity"
+```{r}
+equity <- read.csv("Equity.dat",na.strings = ".")
+summary(equity)
+```
+
+Explore the missing values in this dataset
+```{r}
+equity[complete.cases(equity),]
+equity[!complete.cases(equity),]
+sum(is.na(equity$DEBTINC))
+mean(is.na(equity$DEBTINC))
+```
+
+Now, lets use finer tools to identify patterns of missing data
+Use the tabular output from the mice package
+```{r}
+library("mice")
+md.pattern(equity)
+```
+
+Use the visual output from the VIM package
+```{r}
+library("VIM")
+aggr(equity,prop=F,numbers=T)
+matrixplot(equity)
+marginplot(equity[c("CLAGE","MORTDUE")], pch=c(20),
+           col=c("darkgray", "red", "blue"))
+```
+
+Use correlations
+```{r}
+x <- as.data.frame(abs(is.na(equity))) # code missing values as 1
+head(equity,n=5)
+head(x,n=5)
+
+# now extract variables with missing values
+y <- x[which(apply(x,2,sum)>0)] # find sum over columns
+cor(y)
+
+# create a dataset with only complete cases
+z <- na.omit(equity)
+
+```
+
+Now, let's try imputation
+```{r}
+library(mice)
+imp <- mice(equity,seed=1234)
+fit <- with(imp,lm(BAD~DEBTINC))
+pooled <- pool(fit)
+summary(pooled)
+```
+
+Look at the imputed object
+```{r}
+imp
+imp$imp$MORTDUE  #look at each object's imputed value
+data1 <- complete(imp,action=1) # use 1-5 for determing the imputed set
+data1
+```
+
+Compare this with complete case analysis
+```{r}
+fitcc <- lm(BAD~DEBTINC, data=z)
+summary(fitcc)
+```
+
+Now, let us do Informative Missing
+Create two new variables, and run the model on these new variables
+```{r}
+library(dplyr)
+equity <- mutate(equity,DEBTINCorMean = ifelse(is.na(DEBTINC),33.7799,DEBTINC),
+       Ind= ifelse(is.na(DEBTINC),1,0))
+fit2 <- lm(BAD~DEBTINCorMean+Ind,equity)
+fit1 <- lm(BAD~DEBTINC,equity)
+summary(fit2)
+summary(fit1)
+```
